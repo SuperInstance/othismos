@@ -36,14 +36,28 @@ def _ndarray_to_list(obj: Any) -> Any:
 
 def save_history(gauge: PressureGauge, path: str | Path) -> None:
     """Save a PressureGauge history to JSON."""
+    def _ndarray_to_list(obj: Any) -> Any:
+        """Recursively convert numpy arrays and types to JSON-serializable."""
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, (np.floating, np.integer)):
+            return obj.item()
+        elif isinstance(obj, dict):
+            return {str(k): _ndarray_to_list(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [_ndarray_to_list(v) for v in obj]
+        elif isinstance(obj, set):
+            return sorted(_ndarray_to_list(v) for v in obj)
+        return obj
+
     data = {
         "version": "0.1.0",
         "step_count": gauge._step,
         "measurements": [
             {
-                "step": m.step,
-                "pressure": m.pressure,
-                "pressure_by_constraint": m.pressure_by_constraint,
+                "step": _ndarray_to_list(m.step),
+                "pressure": _ndarray_to_list(m.pressure),
+                "pressure_by_constraint": _ndarray_to_list(m.pressure_by_constraint),
                 "desired_step": _ndarray_to_list(m.desired_step),
                 "actual_step": _ndarray_to_list(m.actual_step),
                 "violation": _ndarray_to_list(m.violation),

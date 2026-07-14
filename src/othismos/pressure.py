@@ -13,9 +13,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Sequence
+from typing import Sequence, TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from othismos.protocols import FeasibilityFn, ProjectionFn, NormalFn
 
 
 class ConstraintType(str, Enum):
@@ -41,9 +44,9 @@ class Constraint:
 
     name: str
     type: ConstraintType
-    bound_fn: callable
-    project_fn: callable
-    normal_fn: callable | None = None  # outward normal at boundary, if known
+    bound_fn: "FeasibilityFn"
+    project_fn: "ProjectionFn"
+    normal_fn: "NormalFn | None" = None  # outward normal at boundary, if known
 
     def is_feasible(self, theta: np.ndarray) -> bool:
         return self.bound_fn(theta)
@@ -89,7 +92,7 @@ def _l2_ball_project(theta: np.ndarray, center: np.ndarray, radius: float) -> np
 
 def l2_constraint(name: str, radius: float, center: np.ndarray | None = None) -> Constraint:
     """Create an L2-norm constraint (e.g., weight regularization)."""
-    center = center if center is not None else np.zeros(1)
+    center = center if center is not None else 0.0  # scalar broadcasts correctly to any shape
     return Constraint(
         name=name,
         type=ConstraintType.L2_NORM,

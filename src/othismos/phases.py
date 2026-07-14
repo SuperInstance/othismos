@@ -107,8 +107,8 @@ class PhaseClassifier:
         trend = float(np.polyfit(x, recent, 1)[0]) if len(recent) > 1 else 0.0
 
         # Auto-calibrate thresholds if not set
-        crisis_th = self.crisis_threshold or (mean_p + 2 * std_p if std_p > 0 else mean_p * 1.5)
-        expansion_th = self.expansion_floor or (mean_p * 0.3)
+        crisis_th = self.crisis_threshold if self.crisis_threshold is not None else (mean_p + 2 * std_p if std_p > 0 else mean_p * 1.5)
+        expansion_th = self.expansion_floor if self.expansion_floor is not None else (mean_p * 0.3)
 
         # Classification logic
         confidence = 0.5
