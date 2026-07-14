@@ -33,7 +33,7 @@ class TestCLIVersion:
     def test_version(self):
         out, _ = run_cli(["version"])
         assert "othismos" in out
-        assert "0.2" in out
+        assert "0.3" in out
 
 
 class TestCLIReef:

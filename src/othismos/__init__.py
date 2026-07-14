@@ -2,11 +2,15 @@
 #
 # The force a bounded system exerts against its bounds.
 # The push IS the knowing.
-#
-# This package implements the mathematical framework described in
-# math/01_PRESSURE_MATH.md and the diagnostic framework from
-# essays/04_THE_POPCORN_DIAGNOSTIC.md.
 
+from othismos.protocols import (
+    FeasibilityFn,
+    ProjectionFn,
+    NormalFn,
+    DistanceFn,
+    ConstraintLike,
+)
+from othismos.config import OthismosConfig
 from othismos.pressure import (
     ConstraintType,
     Constraint,
@@ -63,8 +67,36 @@ from othismos.serialization import (
     pressure_summary,
 )
 
-__version__ = "0.2.0"
+# Optional imports (require extra deps)
+try:
+    from othismos.viz import (
+        plot_pressure,
+        plot_molt_cycle,
+        plot_constraint_profile,
+        plot_diagnostic_timeline,
+    )
+except ImportError:
+    pass
+
+try:
+    from othismos.pandas_export import (
+        gauge_to_dataframe,
+        tracker_to_dataframe,
+        reef_to_dataframe,
+    )
+except ImportError:
+    pass
+
+__version__ = "0.3.0"
 __all__ = [
+    # Protocols
+    "FeasibilityFn",
+    "ProjectionFn",
+    "NormalFn",
+    "DistanceFn",
+    "ConstraintLike",
+    # Config
+    "OthismosConfig",
     # Pressure
     "ConstraintType",
     "Constraint",
@@ -96,7 +128,7 @@ __all__ = [
     "OthismosTorchCallback",
     "OthismosTrainerCallback",
     "constraint_from_torch_model",
-    # Context pressure (projection-free)
+    # Context pressure
     "ContextPressureGauge",
     "ContextPressureMeasurement",
     "cosine_distance",
@@ -112,4 +144,13 @@ __all__ = [
     "save_diagnostic",
     "export_metrics_csv",
     "pressure_summary",
+    # Viz (optional)
+    "plot_pressure",
+    "plot_molt_cycle",
+    "plot_constraint_profile",
+    "plot_diagnostic_timeline",
+    # Pandas (optional)
+    "gauge_to_dataframe",
+    "tracker_to_dataframe",
+    "reef_to_dataframe",
 ]
