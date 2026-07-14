@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "othismos"
-version = "0.1.0"
+version = "0.2.0"
 description = "The force a bounded system exerts against its bounds. The push IS the knowing."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,15 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.20",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+torch = [
+    "torch>=2.0",
 ]
 
 [project.optional-dependencies]

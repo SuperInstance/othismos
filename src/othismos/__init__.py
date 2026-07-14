@@ -8,14 +8,20 @@
 # essays/04_THE_POPCORN_DIAGNOSTIC.md.
 
 from othismos.pressure import (
+    ConstraintType,
+    Constraint,
     PressureMeasurement,
     PressureGauge,
+    GoldilocksZone,
     compute_othismos,
     goldilocks_range,
+    l2_constraint,
+    box_constraint,
 )
 from othismos.phases import (
     MoltPhase,
     PhaseClassifier,
+    PhaseReading,
     MoltCycle,
     MoltCycleTracker,
 )
@@ -30,17 +36,37 @@ from othismos.ecology import (
     ReefLayer,
     Reefquake,
 )
+from othismos.integrations import (
+    MetricLogger,
+    DictLogger,
+    OthismosTorchCallback,
+    OthismosTrainerCallback,
+    constraint_from_torch_model,
+)
+from othismos.serialization import (
+    save_history,
+    load_history,
+    save_diagnostic,
+    export_metrics_csv,
+    pressure_summary,
+)
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     # Pressure
+    "ConstraintType",
+    "Constraint",
     "PressureMeasurement",
     "PressureGauge",
+    "GoldilocksZone",
     "compute_othismos",
     "goldilocks_range",
+    "l2_constraint",
+    "box_constraint",
     # Phases
     "MoltPhase",
     "PhaseClassifier",
+    "PhaseReading",
     "MoltCycle",
     "MoltCycleTracker",
     # Diagnostics
@@ -52,4 +78,16 @@ __all__ = [
     "Reef",
     "ReefLayer",
     "Reefquake",
+    # Integrations
+    "MetricLogger",
+    "DictLogger",
+    "OthismosTorchCallback",
+    "OthismosTrainerCallback",
+    "constraint_from_torch_model",
+    # Serialization
+    "save_history",
+    "load_history",
+    "save_diagnostic",
+    "export_metrics_csv",
+    "pressure_summary",
 ]
