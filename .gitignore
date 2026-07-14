@@ -1,4 +1,6 @@
 *
 !*.md
+!*.py
+!*.toml
 !*/
 !.gitignore
