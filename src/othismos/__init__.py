@@ -43,6 +43,18 @@ from othismos.integrations import (
     OthismosTrainerCallback,
     constraint_from_torch_model,
 )
+from othismos.context_pressure import (
+    ContextPressureGauge,
+    ContextPressureMeasurement,
+    cosine_distance,
+    l2_distance,
+    token_overlap,
+)
+from othismos.controller import (
+    PressureController,
+    ControlAction,
+    ActionType,
+)
 from othismos.serialization import (
     save_history,
     load_history,
@@ -84,6 +96,16 @@ __all__ = [
     "OthismosTorchCallback",
     "OthismosTrainerCallback",
     "constraint_from_torch_model",
+    # Context pressure (projection-free)
+    "ContextPressureGauge",
+    "ContextPressureMeasurement",
+    "cosine_distance",
+    "l2_distance",
+    "token_overlap",
+    # Controller
+    "PressureController",
+    "ControlAction",
+    "ActionType",
     # Serialization
     "save_history",
     "load_history",

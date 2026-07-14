@@ -248,4 +248,200 @@ where Δθ_stability is the component of the gradient step that would violate th
 
 **Cosine annealing** (Loshchilov & Hutter, 2017, arXiv:1608.03983): Decreasing η following a cosine schedule. In óthismos terms, this is **controlled pressure reduction** — as the model approaches a local minimum and interior gradients shrink (interior saturation), reducing η reduces the absolute pressure, keeping the system in the Goldilocks zone rather than letting it oscillate at the boundary.
 
-**SGDR (Stochastic Gradient Descent with Warm Restarts)** (Loshchilov & Hutter, 2017): Periodic LR resets. This is the closest existing practice to explicit molting: the LR is reset to a high value (Exp
+**SGDR (Stochastic Gradient Descent with Warm Restarts)** (Loshchilov & Hutter, 2017, arXiv:1608.03983): Periodic LR resets. This is the closest existing practice to explicit molting: the LR is reset to a high value (Expansion phase), creates a period of high Π as the model reorganizes (Crisis), then settles as the LR decays (Settlement → Resistance). The óthismos framework provides a principled account of *why* warm restarts work: they artificially induce molt cycles, forcing the system to explore new regions of the loss landscape that it couldn't reach within the previous constraint envelope.
+
+**The óthismos prescription vs. existing schedules.** Existing LR schedules are *time-based* (cosine over *T* steps) or *loss-based* (ReduceLROnPlateau). The óthismos prescription is *pressure-based*: adjust η (or the constraint C) to maintain Π in the Goldilocks zone. This is fundamentally adaptive — it responds to the system's actual state, not a predetermined schedule. The implementation in `phases.py` (the `PhaseClassifier`) is a step toward this, classifying phases from pressure dynamics.
+
+**Key references.** He et al., "Deep Residual Learning for Image Recognition" (2016), arXiv:1512.03385; Goyal et al., "Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour" (2017), arXiv:1706.02677; Loshchilov & Hutter, "SGDR: Stochastic Gradient Descent with Warm Restarts" (2017), arXiv:1608.03983; Smith, "Cyclical Learning Rates for Training Neural Networks" (2017), arXiv:1506.01186.
+
+### 3.4 Catastrophic Forgetting as Reefquake
+
+**The phenomenon.** Catastrophic forgetting (McCloskey & Cohen, 1989; French, 1999) occurs when a neural network trained on task A, then trained on task B, loses its performance on task A. The new task's gradients overwrite the parameter regions that encoded A.
+
+**Óthismos interpretation.** In the molt cycle framework, catastrophic forgetting is a **Reefquake** — a structural failure during Crisis that destroys accumulated deposits (the reef of learned representations) rather than cleanly transitioning. The system was pushed past its Crisis threshold without adequate preparation:
+
+- The model in task A is in Resistance: its weights encode A within the constraint envelope.
+- Task B introduces new gradients that push in different directions. If the constraint envelope (regularization, architecture) can accommodate both A and B, the model enters a productive Resistance phase learning both.
+- If the constraint envelope is too small for both, Π spikes. The system enters Crisis. Without mechanisms to preserve A (elastic weight consolidation, replay buffers, etc.), the Crisis destroys the A-representations — a rupture, not a molt.
+
+**Connection to Elastic Weight Consolidation (EWC).** Kirkpatrick et al. (2017, arXiv:1612.00796) penalize changes to weights that are important for previous tasks, using the Fisher Information Matrix diagonal as importance. In óthismos terms, EWC **adds per-weight constraints proportional to each weight's contribution to prior learning**. This raises Π for task B (the constraint is tighter), but prevents the constraint from being exceeded (no catastrophic forgetting). EWC is, in effect, a constraint engineering technique to prevent rupture during multi-task Crisis.
+
+**Testable prediction.** Measure Π during sequential task training. Catastrophic forgetting should correlate with Π exceeding the Crisis threshold without a Settlement phase. Forgetting should be preventable by detecting the Crisis transition and either (a) expanding the model capacity (molting) or (b) adding EWC-style constraints (tightening the reef).
+
+### 3.5 Curriculum Learning as Controlled Pressure
+
+**The framework.** Curriculum learning (Bengio et al., 2009; Hacohen & Weinshall, 2019, arXiv:1905.07813) presents training examples in a meaningful order — from easy to hard, or from simple concepts to complex ones — improving both convergence speed and final performance.
+
+**Óthismos interpretation.** Curriculum learning is **controlled pressure application**. Easy examples produce small gradients (low Π). Hard examples produce large gradients (high Π). A curriculum gradually increases the difficulty, which gradually increases Π, keeping the system in the Goldilocks zone throughout:
+
+1. **Start with easy data (Expansion):** Π is low, the model learns basic patterns rapidly.
+2. **Increase difficulty (Resistance):** Π rises as the model must capture more complex structure. The constraint (model capacity, regularization) forces the model to generalize rather than memorize.
+3. **Hardest examples last (approaching Crisis):** Π approaches the upper Goldilocks bound. The model is pushed to its limit.
+
+A poorly designed curriculum starts with hard data (Π > Π_max immediately — Crisis without preparation, leading to mode collapse or divergence) or presents only easy data (Π ≈ 0 — the system never leaves Expansion, never generalizes beyond trivial patterns).
+
+**Key references.** Bengio et al., "Curriculum Learning" (2009), ICML; Hacohen & Weinshall, "On the Power of Curriculum Learning in Training Deep Networks" (2019), arXiv:1905.07813; Wang et al., "Survey on Curriculum Learning" (2021), arXiv:2010.13179.
+
+---
+
+## 4. Open Theoretical Questions
+
+### 4.1 What Should Be Formalized Next?
+
+**Question 1: The correct norm for Π.**
+
+The current definition uses the Euclidean norm ‖Δθ‖₂. But as noted in §1.3, this is sensitive to parameterization. Open questions:
+- Should Π use the Fisher metric (information-geometric óthismos)?
+- Should Π be normalized by dimensionality? By ‖θ‖?
+- Is there a parameterization-invariant óthismos?
+
+This is the most important formalization gap. Without resolving it, cross-scale comparisons (§5 of the math document) are not meaningful — you cannot compare Π at the neuron level to Π at the ecology level without a consistent normalization.
+
+**Question 2: The molting threshold Π_molt.**
+
+The math document defines the molting threshold but does not derive it. Open questions:
+- Is Π_molt a universal constant (like the critical temperature of a phase transition)?
+- Or is it system-dependent (requiring calibration)?
+- Can it be derived from the curvature of ℒ near the boundary, or from the Hessian spectrum?
+- Is there a theory of *optimal* Π_molt — a threshold that minimizes total training cost over all molts?
+
+**Question 3: Pressure dynamics under stochastic optimization.**
+
+The current theory assumes deterministic gradient descent. Real training uses SGD (mini-batches, momentum, adaptive learning rates). Open questions:
+- How does stochasticity affect Π? Is E[‖Δθ‖] under SGD the same as under full-batch GD?
+- Does momentum (which accumulates gradient history) change the interpretation of Π?
+- Adam and other adaptive methods rescale gradients per-parameter. How does this affect the projection residual? Adam's update is effectively s(t) = −η · m̂(t) / (√v̂(t) + ε), which is already a form of per-parameter rescaling. The constraint and projection must be defined in Adam-space, not gradient-space.
+
+**Question 4: Connection to Neural Tangent Kernel (NTK) regime.**
+
+In the NTK regime (Jacot et al., 2018, arXiv:1806.07566), wide neural networks behave as kernel methods with the NTK as kernel. The training dynamics are linearized. In this regime:
+- Π has a closed-form expression in terms of the NTK and the data distribution.
+- The Goldilocks zone can be derived analytically.
+- The molt cycle reduces to kernel evolution — does the NTK change during training in a way that mirrors the phase transitions?
+
+This connection would provide an analytically tractable testbed for óthismos theory.
+
+### 4.2 Testable Claims
+
+**Claim 1: Π predicts generalization gap.**
+Systems with Π in the Goldilocks zone during the final phase of training generalize better than systems with Π near zero (underfitting) or Π near the upper bound (overfitting).
+
+*Test:* Train multiple models on CIFAR-100 with varying regularization strengths. Measure Π throughout training. Plot final test accuracy vs. mean Π during the last 25% of training. Predict a concave relationship with peak accuracy at moderate Π.
+
+**Claim 2: Π at grokking time is constant across configurations.**
+The grokking event (Power et al., 2022) occurs at a critical Π value that is approximately constant across model sizes, dataset sizes, and learning rates.
+
+*Test:* Reproduce the grokking experiments. Instrument Π (using weight decay as the constraint). Log Π at the grokking transition (defined as the step where validation accuracy crosses 50%). Check if Π_grokking is approximately constant.
+
+**Claim 3: The Pop/Burn/Seep diagnostic distinguishes failure modes better than loss monitoring.**
+
+*Test:* Collect training failures from a benchmark suite (e.g., models that don't converge, models that diverge, models that overfit). Classify each as Pop (Π high, progressing), Burn (Π ≈ 0, no pressure), or Seep (Π fluctuating, no accumulation). Show that the Pop/Burn/Seep classification predicts the correct remedy (more capacity / harder data for Burn; tighter regularization for Seep; patience for Pop) better than loss-curve analysis alone.
+
+**Claim 4: Pressure-triggered constraint expansion outperforms fixed schedules.**
+
+*Test:* Train models with (a) fixed cosine LR schedule and (b) óthismos-adaptive schedule (adjust LR to maintain Π in the Goldilocks zone). Compare final accuracy and total training steps. The óthismos-adaptive schedule should reach comparable accuracy with fewer steps because it doesn't waste time in low-Π regimes.
+
+**Claim 5: EoS is the Resistance phase of an implicit molt cycle.**
+
+*Test:* Instrument the Hessian eigenvalue λ_max and the óthismos Π during training. Show that the EoS phenomenon (λ_max hovering near 2/η) corresponds to the Resistance phase (Π in Goldilocks zone, stable and high). Show that transitions where λ_max briefly drops ("catapult" events, Lewkowycz et al., 2020, arXiv:2007.01645) correspond to Settlement or Expansion phases.
+
+### 4.3 What a Reviewer Would Push Back On
+
+**Pushback 1: "This is just constrained optimization with new vocabulary."**
+
+*Response.* The mathematical machinery is indeed constrained optimization. The contribution is: (a) the *measurement protocol* — instrumenting projection residuals as a universal diagnostic, (b) the *phenomenological model* — the molt cycle as a description of training dynamics, and (c) the *cross-scale claim* — that the same diagnostic applies from weights to data centers. These are systems-engineering and scientific-modeling contributions, not pure-math contributions. The paper should be positioned accordingly.
+
+**Pushback 2: "The Vitality Theorem is circular."**
+
+*Response.* Correct. The theorem as stated is a definition, not a discovery. The non-trivial claim is that Π correlates with independently-measurable vitality indicators (exploration diversity, loss improvement rate, generalization gap). This empirical claim is testable (Claim 1 above) but currently unsupported by experiments. The paper should present the Vitality Theorem as a *definition with empirical predictions*, not as a proof.
+
+**Pushback 3: "Scale invariance is unproven and probably false."**
+
+*Response.* This is the weakest part of the framework. The response should be: (a) acknowledge that Euclidean Π is not scale-invariant, (b) propose the information-geometric normalization (Fisher-metric Π), (c) present the scale-invariance claim as a conjecture for the normalized version, and (d) provide preliminary empirical evidence across at least two scales (e.g., layer-level and model-level).
+
+**Pushback 4: "The molt cycle is unfalsifiable as described."**
+
+*Response.* The five-phase cycle with its flexible transitions *is* difficult to falsify as a whole — one can always argue the system is in a transition between phases. To make it falsifiable, focus on specific predictions: (a) the Crisis → Settlement transition should produce a sharp drop in Π, (b) regular periodicity should be observable in long training runs, (c) the staircase metric should distinguish healthy from unhealthy training in a predictable way. If these specific predictions fail, the molt cycle model should be revised.
+
+**Pushback 5: "You haven't shown that pressure-based scheduling beats existing adaptive methods."**
+
+*Response.* This is true and is the most important experimental gap. The framework is interesting only if pressure-based control of training (constraint expansion triggered by Π > Π_molt) outperforms existing methods (cosine annealing, ReduceLROnPlateau, warmup schedules) on standard benchmarks. Without this empirical demonstration, the framework remains a philosophical reframing of known phenomena, not a practical contribution.
+
+**Pushback 6: "The connection to thermodynamics is analogical, not formal."**
+
+*Response.* The thermodynamic language (pressure, heat, temperature) is used loosely. To make it formal: (a) define the Hamiltonian H(θ) = ℒ(θ) + I_C(θ) where I_C is the constraint indicator, (b) define temperature through the learning rate or SGD noise scale, (c) derive the partition function Z(β) = ∫_C e^{−βℒ(θ)} dθ, and (d) show that Π = −∂(log Z)/∂(log Vol(C)) — the thermodynamic pressure of the constrained statistical ensemble. This formalization would be a significant theoretical contribution but is not attempted in the current math document.
+
+---
+
+## 5. Summary: Positioning and Next Steps
+
+### 5.1 What Óthismos Is
+
+Óthismos is a **measurement protocol and phenomenological framework** for constrained learning systems. It identifies projection residuals (a known quantity in optimization) as a universal diagnostic signal and wraps them in a phase-transition model (the molt cycle) inspired by biological growth patterns.
+
+### 5.2 What Óthismos Is Not
+
+Óthismos is **not** a new optimization algorithm, a new generalization theory, or a new mathematical framework. The underlying mathematics is constrained optimization. The underlying learning theory is standard SGD dynamics. The novelty is in the *instrumentation* and *interpretation*.
+
+### 5.3 The Path to Rigor
+
+The following steps would elevate óthismos from a philosophical framework to a scientific contribution:
+
+1. **Resolve the normalization problem.** Define Π in a parameterization-invariant way (Fisher metric or relative norm).
+2. **Run the grokking experiment.** Test whether Π at the grokking transition is constant (Claim 2). This is the cleanest possible validation.
+3. **Run the generalization experiment.** Test whether Π predicts generalization gap (Claim 1). This is the most impactful validation.
+4. **Formalize the thermodynamic connection.** Derive Π from the partition function of the constrained ensemble.
+5. **Demonstrate practical benefit.** Show that pressure-based scheduling outperforms cosine annealing on at least one benchmark.
+6. **Connect to NTK theory.** Derive Π analytically in the infinite-width limit for a tractable test case.
+
+### 5.4 Honest Characterization
+
+The óthismos project is strongest as a **systems thinking framework** — a way of seeing constrained systems that unifies phenomena across scales and provides operational diagnostics. It is weakest as a **mathematical theory** — the formal foundations re-derive known results and the novel claims (scale invariance, vitality theorem) are either unproven or circular.
+
+The path forward is empirical: the framework makes specific, testable predictions about training dynamics. If those predictions hold — particularly the constancy of Π at grokking and the predictive power of Π for generalization — then óthismos earns its place as a useful lens, regardless of whether the mathematics is novel. If the predictions fail, the framework should be honestly revised.
+
+---
+
+## References
+
+1. Amari, S. (1998). "Natural Gradient Works Efficiently in Learning." *Neural Computation* 10(2): 251–276.
+2. Amari, S. (2016). *Information Geometry and Its Applications*. Springer.
+3. Bengio, Y., Louradour, J., Collobert, R., & Weston, J. (2009). "Curriculum Learning." ICML.
+4. Boyd, S. & Vandenberghe, L. (2004). *Convex Optimization*. Cambridge University Press.
+5. Catoni, O. (2007). *PAC-Bayesian Supervised Classification*. IMS Lecture Notes.
+6. Chizat, L., Oyallon, E., & Bach, F. (2019). "On Lazy Training in Differentiable Programming." arXiv:1902.04742.
+7. Cohen, J., Kaur, S., Li, Y., Kolter, J.Z., & Talwalkar, A. (2021). "Gradient Descent on Neural Networks Typically Occurs at the Edge of Stability." arXiv:2103.00065. ICLR.
+8. Cohn, D., Atlas, L., & Ladner, R. (1994). "Improving Generalization with Active Learning." *Machine Learning* 15(2): 201–221.
+9. Conn, A.R., Gould, N.I.M., & Toint, P.L. (2000). *Trust Region Methods*. SIAM.
+10. Dziugaite, G.K. & Roy, D.M. (2017). "Computing Nonvacuous Generalization Bounds for Deep (Stochastic) Neural Networks." arXiv:1703.11008.
+11. Fiacco, A.V. & McCormick, G.P. (1968). *Nonlinear Programming: Sequential Unconstrained Minimization Techniques*. Wiley.
+12. Foret, P., Kleiner, A., Mobahi, H., & Neyshabur, B. (2021). "Sharpness-Aware Minimization for Efficiently Improving Generalization." arXiv:2010.01412. ICLR.
+13. French, R.M. (1999). "Catastrophic Forgetting in Connectionist Networks." *Connection Science* 11(2).
+14. Goyal, P. et al. (2017). "Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour." arXiv:1706.02677.
+15. Hacohen, G. & Weinshall, D. (2019). "On the Power of Curriculum Learning in Training Deep Networks." arXiv:1905.07813.
+16. He, K., Zhang, X., Ren, S., & Sun, J. (2016). "Deep Residual Learning for Image Recognition." arXiv:1512.03385. CVPR.
+17. Jacot, A., Gabriel, F., & Hongler, C. (2018). "Neural Tangent Kernel: Convergence and Generalization in Neural Networks." arXiv:1806.07566. NeurIPS.
+18. Karush, W. (1939). *Minima of Functions of Several Variables with Inequalities as Side Conditions*. M.Sc. Thesis, U. Chicago.
+19. Keskar, N.S., Mudigere, D., Nocedal, J., Smelyanskiy, M., & Tang, P.T.P. (2017). "On Large-Batch Training for Deep Learning: Generalization Gap and Sharp Minima." arXiv:1609.04836.
+20. Kirkpatrick, J. et al. (2017). "Overcoming Catastrophic Forgetting in Neural Networks." arXiv:1612.00796. PNAS.
+21. Kuhn, H.W. & Tucker, A.W. (1951). "Nonlinear Programming." *Proc. 2nd Berkeley Symposium*. pp. 481–492.
+22. Lewkowycz, A., Bahri, Y., Dyer, E., Sohl-Dickstein, J., & Gur-Ari, G. (2020). "The Catapult Mechanism for Large Learning Rates." arXiv:2007.01645.
+23. Liu, Z., Michaud, E.J., & Tegmark, M. (2022). "Omnigrok: Grokking Beyond Algorithmic Data." arXiv:2210.01117.
+24. Loshchilov, I. & Hutter, F. (2017). "SGDR: Stochastic Gradient Descent with Warm Restarts." arXiv:1608.03983. ICLR.
+25. Martens, J. (2010). "Deep Learning via Hessian-Free Optimization." ICML.
+26. McCloskey, M. & Cohen, N.J. (1989). "Catastrophic Interference in Connectionist Networks: The Sequential Learning Problem." *Psychology of Learning and Motivation* 24.
+27. Moreau, J.J. (1965). "Proximité et dualité dans un espace hilbertien." *Bull. Soc. Math. France* 93: 273–299.
+28. Nanda, N., Chan, L., Lieberum, T., Smith, G., & Steinhardt, J. (2023). "Progress Measures for Grokking via Mechanistic Interpretability." arXiv:2301.05217. ICLR.
+29. Nijkamp, E. et al. (2020). "Learning Non-Convergent Non-Persistent Short-Run MCMC Toward Energy-Based Model." arXiv:1904.06539.
+30. Nocedal, J. & Wright, S.J. (2006). *Numerical Optimization*. Springer, 2nd ed.
+31. Parikh, N. & Boyd, S. (2014). "Proximal Algorithms." *Foundations and Trends in Optimization* 1(3): 127–239.
+32. Power, A., Burda, Y., Edwards, H., Mishkin, A., & Bojanowski, K. (2022). "Grokking: Generalization Beyond Overfitting on Small Algorithmic Datasets." arXiv:2201.02177.
+33. Settles, B. (2009). "Active Learning Literature Survey." University of Wisconsin-Madison CS TR-1648.
+34. Smith, L.N. (2017). "Cyclical Learning Rates for Training Neural Networks." arXiv:1506.01186. WACV.
+35. Wang, X., Chen, Y., & Zhu, W. (2021). "A Survey on Curriculum Learning." arXiv:2010.13179.
+36. Willems, J.C. (1972). "Dissipative Dynamical Systems Part I: General Theory." *Archive for Rational Mechanics and Analysis* 45(5): 321–351.
+37. Wright, S.J. (1997). *Primal-Dual Interior-Point Methods*. SIAM.
+
+---
+
+*Research document. Part of the Óthismos project. Founded 2026-07-14.*
