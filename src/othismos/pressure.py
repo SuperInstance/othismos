@@ -74,11 +74,26 @@ class PressureMeasurement:
     violation: np.ndarray
     pressure: float
     pressure_by_constraint: dict[str, float] = field(default_factory=dict)
+    desired_norm: float = 0.0
+    actual_norm: float = 0.0
+    violation_norm: float = 0.0
+    store_vectors: bool = True
 
     @property
     def is_pushing(self) -> bool:
         """True if the system is exerting measurable pressure."""
         return self.pressure > 1e-10
+
+    def scalar_dict(self) -> dict:
+        """Return only scalar fields — memory-efficient for logging."""
+        return {
+            "step": self.step,
+            "pressure": self.pressure,
+            "desired_norm": self.desired_norm,
+            "actual_norm": self.actual_norm,
+            "violation_norm": self.violation_norm,
+            "pressure_by_constraint": dict(self.pressure_by_constraint),
+        }
 
 
 def _l2_ball_project(theta: np.ndarray, center: np.ndarray, radius: float) -> np.ndarray:
@@ -134,6 +149,7 @@ def compute_othismos(
     """
     # The step the system WANTS to take
     desired = -learning_rate * gradient
+    desired_norm = float(np.linalg.norm(desired))
 
     # Apply constraints sequentially (projection onto intersection)
     theta_new = theta + desired
@@ -159,6 +175,9 @@ def compute_othismos(
         violation=violation,
         pressure=total_pressure,
         pressure_by_constraint=pressure_by,
+        desired_norm=desired_norm,
+        actual_norm=float(np.linalg.norm(actual)),
+        violation_norm=total_pressure,
     )
 
 
@@ -210,12 +229,20 @@ class PressureGauge:
 
     Accumulates pressure measurements over time and provides
     aggregate statistics, trend detection, and alerting.
+
+    For large models (>1B params), set store_vectors=False to avoid
+    storing full numpy arrays per step. Only scalar norms are kept.
     """
 
-    def __init__(self, window_size: int = 1000):
+    def __init__(self, window_size: int = 1000, store_vectors: bool = True):
         self._history: list[PressureMeasurement] = []
         self._window = window_size
         self._step = 0
+        self._store_vectors = store_vectors
+        # Rolling statistics for memory efficiency
+        self._pressure_sum = 0.0
+        self._pressure_sq_sum = 0.0
+        self._pressure_count = 0
 
     def measure(
         self,
@@ -227,10 +254,23 @@ class PressureGauge:
         """Take a pressure reading."""
         m = compute_othismos(theta, gradient, learning_rate, constraints)
         m.step = self._step
+        m.store_vectors = self._store_vectors
+        if not self._store_vectors:
+            # Zero out arrays to free memory — scalars already stored
+            m.desired_step = np.zeros(0)
+            m.actual_step = np.zeros(0)
+            m.violation = np.zeros(0)
         self._step += 1
         self._history.append(m)
+        # Update rolling stats
+        self._pressure_sum += m.pressure
+        self._pressure_sq_sum += m.pressure ** 2
+        self._pressure_count += 1
         if len(self._history) > self._window:
-            self._history = self._history[-self._window:]
+            old = self._history.pop(0)
+            self._pressure_sum -= old.pressure
+            self._pressure_sq_sum -= old.pressure ** 2
+            self._pressure_count -= 1
         return m
 
     @property
