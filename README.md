@@ -355,7 +355,17 @@ See `research/03_THEORETICAL_FOUNDATIONS.md` for 37+ references and the honest a
 
 v0.3.0. Built 2026-07-14. Actively developed.
 
-The framework is stable. The library is usable. The research is honest about what's proven and what's conjectured. The writing is meant to be read by humans. The code is meant to be read by agents.
+## Modular ecosystem
+
+The framework is decomposing into standalone modules, each its own repo and pip package:
+
+| Module | Repo | What it does |
+|--------|------|-------------|
+| **óthismos** (this repo) | [SuperInstance/othismos](https://github.com/SuperInstance/othismos) | Core: pressure measurement, molt cycle, popcorn diagnostic |
+| **othismos-reef** | [SuperInstance/othismos-reef](https://github.com/SuperInstance/othismos-reef) | Knowledge graph with erosion, three-gate validation, cascading failure |
+| **othismos-llm** | [SuperInstance/othismos-llm](https://github.com/SuperInstance/othismos-llm) | Context-window pressure for LLMs — safe truncation point finder |
+
+Each module can be used independently. They connect through the core `othismos` package.
 
 ---
 
