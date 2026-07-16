@@ -53,6 +53,32 @@ class TestPhaseClassifier:
         assert MoltPhase.RESISTANCE.label == "Resistance"
         assert MoltPhase.CRISIS.label == "Crisis"
 
+    def test_crisis_threshold_zero_is_respected(self):
+        """Regression for Bug #2: crisis_threshold=0.0 must NOT be silently ignored.
+
+        Previously, the code used `or` instead of `is not None`, which meant
+        threshold=0.0 was treated the same as threshold=None (auto-calibrated).
+        """
+        clf = PhaseClassifier(crisis_threshold=0.0, expansion_floor=0.0)
+        # Any positive pressure should now be at/above the crisis threshold
+        pressures = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        reading = clf.classify(pressures)
+        assert reading.phase == MoltPhase.CRISIS, (
+            f"crisis_threshold=0.0 should trigger CRISIS for any positive pressure, "
+            f"got {reading.phase.name}"
+        )
+
+    def test_expansion_floor_zero_is_respected(self):
+        """Regression for Bug #2: expansion_floor=0.0 must NOT be silently ignored."""
+        clf = PhaseClassifier(crisis_threshold=10.0, expansion_floor=0.0)
+        # With floor=0, any positive pressure with rising trend should be EXPANSION
+        pressures = [0.01, 0.02, 0.05, 0.08, 0.12, 0.18]
+        reading = clf.classify(pressures)
+        assert reading.phase in (MoltPhase.EXPANSION, MoltPhase.RESISTANCE), (
+            f"With expansion_floor=0.0, low pressure should be EXPANSION (or RESISTANCE), "
+            f"got {reading.phase.name}"
+        )
+
 
 class TestMoltCycleTracker:
     def test_initial_state(self):

@@ -159,3 +159,50 @@ class TestReefQueries:
         assert summary["total_deposits"] == 2
         assert summary["step"] == 0
         assert "layers" in summary
+
+
+class TestReefDictMutationSafety:
+    """Regression for Bug #4: Reef.tick() must NOT mutate dict during iteration.
+
+    The original bug raised RuntimeError on large reefs where erosion
+    deletes deposits while iterating. Fix: iterate over a snapshot
+    (list(self._deposits.items())).
+    """
+
+    def test_tick_with_mass_erosion_no_runtimeerror(self):
+        """Reef.tick should not raise RuntimeError when erosion removes many deposits."""
+        reef = Reef(erosion_age=3, consolidation_age=1000, foundation_age=1000)
+        # Build a large reef with deposits that will all erode
+        for i in range(100):
+            reef.submit(f"dep_{i}", f"lonely content {i}")  # no references
+
+        # Tick many times to trigger mass erosion (all orphans past erosion_age)
+        try:
+            for _ in range(20):
+                result = reef.tick()
+                # After enough ticks, all deposits should have eroded
+                if result["total_deposits"] == 0:
+                    break
+        except RuntimeError as e:
+            pytest.fail(f"Reef.tick() raised RuntimeError during mass erosion: {e}")
+
+        # Verify reef is clean
+        assert reef.total_deposits == 0
+
+    def test_tick_interleaved_add_and_erosion(self):
+        """Adding deposits during tick cycle should be safe."""
+        reef = Reef(erosion_age=2, consolidation_age=1000, foundation_age=1000)
+        # Pre-populate with erodable deposits
+        for i in range(20):
+            reef.submit(f"old_{i}", "old content")
+        reef.tick()  # age=1
+        reef.tick()  # age=2, erosion happens
+
+        # Now add fresh deposits
+        for i in range(10):
+            reef.submit(f"new_{i}", "new content")
+        reef.tick()  # tick fresh deposits + handle erosion
+
+        # No exception, and fresh deposits should still be present
+        assert reef.total_deposits == 10
+        assert reef.query("new_0") is not None

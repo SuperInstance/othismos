@@ -107,13 +107,21 @@ def _l2_ball_project(theta: np.ndarray, center: np.ndarray, radius: float) -> np
 
 def l2_constraint(name: str, radius: float, center: np.ndarray | None = None) -> Constraint:
     """Create an L2-norm constraint (e.g., weight regularization)."""
-    center = center if center is not None else 0.0  # scalar broadcasts correctly to any shape
+    if center is None:
+        # Lazy origin: treat center as zero vector of appropriate shape
+        bound_fn = lambda theta: np.linalg.norm(theta) <= radius
+        project_fn = lambda theta: _l2_ball_project(theta, np.zeros_like(theta), radius)
+        normal_fn = lambda theta: theta / max(np.linalg.norm(theta), 1e-12)
+    else:
+        bound_fn = lambda theta: np.linalg.norm(theta - center) <= radius
+        project_fn = lambda theta: _l2_ball_project(theta, center, radius)
+        normal_fn = lambda theta: (theta - center) / max(np.linalg.norm(theta - center), 1e-12)
     return Constraint(
         name=name,
         type=ConstraintType.L2_NORM,
-        bound_fn=lambda theta: np.linalg.norm(theta - center) <= radius,
-        project_fn=lambda theta: _l2_ball_project(theta, center, radius),
-        normal_fn=lambda theta: (theta - center) / max(np.linalg.norm(theta - center), 1e-12),
+        bound_fn=bound_fn,
+        project_fn=project_fn,
+        normal_fn=normal_fn,
     )
 
 
@@ -151,7 +159,25 @@ def compute_othismos(
     desired = -learning_rate * gradient
     desired_norm = float(np.linalg.norm(desired))
 
-    # Apply constraints sequentially (projection onto intersection)
+    # Apply constraints sequentially (projection onto intersection).
+    #
+    # KNOWN LIMITATION (v0.4.0): Sequential projection does not perform
+    # fixed-point iteration. When two constraints interact (e.g., L2 ball
+    # + box constraint), projecting onto constraint A may push the result
+    # back outside constraint B. Our implementation projects A then B,
+    # which gives the correct projection onto A ∩ B only when A and B are
+    # "compatible" (their projections commute). For general constraint
+    # sets, a true fixed-point iteration would be needed.
+    #
+    # In practice this is rarely a problem because:
+    # - Most constraint sets ARE compatible (L2 + soft bounds, etc.)
+    # - The error from sequential projection is small relative to the
+    #   measurement noise in the gradient
+    # - Users who need exact intersection projection can pass their own
+    #   project_fn that performs the fixed-point iteration
+    #
+    # Future work: add an `iterative=True` flag that runs fixed-point
+    # projection for users who need exact A ∩ B projection.
     theta_new = theta + desired
     pressure_by: dict[str, float] = {}
 

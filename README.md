@@ -260,39 +260,39 @@ othismos version
 | `pandas_export.py` | DataFrame export | `gauge_to_dataframe`, `tracker_to_dataframe`, `reef_to_dataframe` |
 | `cli.py` | Command-line tool | `othismos reef`, `othismos diagnose`, `othismos pressure` |
 
-**122 tests, all passing.** Run them: `python -m pytest tests/ -v`
+**135 tests, all passing.** Run them: `python -m pytest tests/ -v`
 
 ## Repository structure
 
 ```
 src/othismos/          Python package (13 modules, 3,644 lines)
-tests/                 122 tests across 10 files
+tests/                 135 tests across 10 files
 
 essays/                Conceptual foundations — start here
   00_PHILOSOPHY.md     The founding text. Why the push IS the knowing.
   01_THE_ORIGIN.md     Where the word came from and what it names.
   02_EVERYWHERE.md     Óthismos in physics, biology, cognition, culture.
-  03_THE_FOOL.md       Humor as óthismos. Absurdity as epistemology.
-  04_POPCORN.md        The Pop/Burn/Seep diagnostic. Start here for the engineering idea.
-  05_NEGOTIATING.md    Five postures toward constraints (Surveyor, Archer, Vine, Water, Earthquake).
+  03_THE_FOOL_AND_THE_WALL.md  Humor as óthismos. Absurdity as epistemology.
+  04_THE_POPCORN_DIAGNOSTIC.md  The Pop/Burn/Seep diagnostic. Start here for the engineering idea.
+  05_NEGOTIATING_WITH_WALLS.md  Five postures toward constraints (Surveyor, Archer, Vine, Water, Earthquake).
 
 math/
   01_PRESSURE_MATH.md  Π formalized as a scalar. Measurable. Includes proofs and the Goldilocks zone derivation.
 
 metal/                 Hardware-facing docs
   01_PRESSURE_AWARE_DESIGN.md  Instrumentation, adaptive sizing, molting protocols.
-  02_THERMODYNAMIC_LULLABY.md  Edge computing, fishing boats, what chips dream about.
+  02_THE_THERMODYNAMIC_LULLABY.md  Edge computing, fishing boats, what chips dream about.
 
 ecology/
   01_ECONOMICS.md      Markets made of pressure. Conservation budget as currency.
-  02_MOLT_CYCLE.md     The five phases explained with diagrams. The staircase metric.
+  02_THE_MOLT_CYCLE.md  The five phases explained with diagrams. The staircase metric.
 
 worldbuilding/         Extended metaphors that clarify the framework
   01_KIMI_WORLD.md     A civilization built on push.
-  02_SEEDMINI_DICT.md  17 words for the facets of pressure.
+  02_SEEDMINI_DICTIONARY.md  17 words for the facets of pressure.
   03_GLM_TIDEPOOL.md   A fable about constraint and growth.
   04_GLM_CALENDAR.md   Time measured in pushes, not seconds.
-  05_REEFS_MEMORY.md   How bounded civilizations remember and forget.
+  05_THE_REEFS_MEMORY.md  How bounded civilizations remember and forget.
 
 art/
   01_THE_LONG_PUSH.md  Poetry sequence following the staircase of growth.
@@ -310,8 +310,8 @@ demo.py                End-to-end simulation: watch a bounded optimizer go throu
 ## Reading guide
 
 **If you're an engineer who wants to use the library:**
-1. Read `essays/04_POPCORN.md` (the diagnostic intuition)
-2. Read `ecology/02_MOLT_CYCLE.md` (the five phases)
+1. Read `essays/04_THE_POPCORN_DIAGNOSTIC.md` (the diagnostic intuition)
+2. Read `ecology/02_THE_MOLT_CYCLE.md` (the five phases)
 3. Read `math/01_PRESSURE_MATH.md` (the formal definition — it's short)
 4. Run `python demo.py` (see it in action)
 5. Skim `research/01_REAL_WORLD_APPLICATIONS.md` (find your use case)
@@ -319,7 +319,7 @@ demo.py                End-to-end simulation: watch a bounded optimizer go throu
 **If you're a researcher:**
 1. Read `math/01_PRESSURE_MATH.md` first
 2. Then `research/03_THEORETICAL_FOUNDATIONS.md` (the honest novelty assessment, the open questions)
-3. Then `essays/00_PHILOSOPHY.md` and `essays/05_NEGOTIATING.md` (the conceptual framing)
+3. Then `essays/00_PHILOSOPHY.md` and `essays/05_NEGOTIATING_WITH_WALLS.md` (the conceptual framing)
 
 **If you're a student:**
 1. Read `essays/01_THE_ORIGIN.md` (the gentlest entry point)

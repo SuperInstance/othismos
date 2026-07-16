@@ -70,13 +70,16 @@ class OthismosTorchCallback:
 
     The constraint set is applied to model parameters after optimizer.step()
     via projection. Pressure is measured as the gap between the optimizer's
-    desired step and the projected step.
+    desired step and the projected step. Optionally, the constrained parameters
+    can be written back to the model.
 
     Args:
         constraints: List of othismos Constraint objects (applied to flattened params)
-        logger: Optional MetricLogger (W&B, TensorBoard, DictLogger)
+        logger: Optional MetricLogger (W&B, TensorBox, DictLogger)
         log_every: Log metrics every N steps (default: every step)
         auto_clip_grad: If True, clip gradients to the Goldilocks zone upper bound
+        apply_constraints: If True, write constrained parameters back to model
+                           after measuring pressure (default: False, observatory-only)
     """
 
     def __init__(
@@ -85,11 +88,13 @@ class OthismosTorchCallback:
         logger: MetricLogger | None = None,
         log_every: int = 1,
         auto_clip_grad: bool = False,
+        apply_constraints: bool = False,
     ) -> None:
         self.constraints = list(constraints)
         self.logger = logger
         self.log_every = max(1, log_every)
         self.auto_clip_grad = auto_clip_grad
+        self.apply_constraints = apply_constraints
 
         self.gauge = PressureGauge(window_size=10000)
         self.tracker = MoltCycleTracker()
@@ -165,6 +170,10 @@ class OthismosTorchCallback:
         self.gauge._history.append(m)
         self.gauge._step += 1
         self._step += 1
+
+        # Optionally write back constrained parameters to model
+        if self.apply_constraints:
+            self._write_back_params(model, projected)
 
         # Phase tracking
         reading = self.tracker.update(pressure)

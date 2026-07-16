@@ -37,6 +37,48 @@ class TestSaveLoadHistory:
             assert len(loaded.history) == 20
             assert loaded.current_pressure == pytest.approx(gauge.current_pressure)
 
+    def test_numpy_scalar_serialization(self):
+        """Test that numpy scalar types (int64, float64) are correctly serialized."""
+        gauge = PressureGauge()
+        c = l2_constraint("test", radius=0.1)
+        # Use numpy scalars for step and pressure
+        theta = np.array([0.1, 0.0])
+        gradient = np.array([-1.0, 0.0])
+        m = gauge.measure(theta, gradient, 0.1, [c])
+        # Manually replace with numpy scalars to test serialization
+        m.step = np.int64(42)
+        m.pressure = np.float64(0.123456)
+        m.pressure_by_constraint["test"] = np.float64(0.0001)
+        # Also test numpy array with integer dtype
+        m.desired_step = np.array([1, 2], dtype=np.int64)
+        m.actual_step = np.array([3, 4], dtype=np.int32)
+        m.violation = np.array([5, 6], dtype=np.float32)
+
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "history_numpy.json"
+            # This should not raise a TypeError
+            save_history(gauge, path)
+            assert path.exists()
+
+            # Load back and check that values are correct
+            loaded = load_history(path)
+            assert len(loaded.history) == 1
+            loaded_m = loaded.history[0]
+            # Check that numpy scalars became Python types
+            assert isinstance(loaded_m.step, int)
+            assert loaded_m.step == 42
+            assert isinstance(loaded_m.pressure, float)
+            assert loaded_m.pressure == pytest.approx(0.123456)
+            assert isinstance(loaded_m.pressure_by_constraint["test"], float)
+            assert loaded_m.pressure_by_constraint["test"] == pytest.approx(0.0001)
+            # Arrays should be np.ndarray with values preserved
+            assert isinstance(loaded_m.desired_step, np.ndarray)
+            np.testing.assert_array_equal(loaded_m.desired_step, [1, 2])
+            assert isinstance(loaded_m.actual_step, np.ndarray)
+            np.testing.assert_array_equal(loaded_m.actual_step, [3, 4])
+            assert isinstance(loaded_m.violation, np.ndarray)
+            np.testing.assert_array_equal(loaded_m.violation, [5, 6])
+
     def test_json_structure(self):
         gauge = PressureGauge()
         c = l2_constraint("test", radius=0.1)

@@ -19,6 +19,18 @@ from othismos.phases import PhaseReading, MoltPhase
 from othismos.diagnostics import DiagnosticResult, SystemHealth
 
 
+class NumpyEncoder(json.JSONEncoder):
+    """JSON encoder that handles numpy types and arrays."""
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, (np.floating, np.integer)):
+            return obj.item()
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        return super().default(obj)
+
+
 def _ndarray_to_list(obj: Any) -> Any:
     """Recursively convert numpy arrays and types to JSON-serializable."""
     if isinstance(obj, np.ndarray):
@@ -36,36 +48,22 @@ def _ndarray_to_list(obj: Any) -> Any:
 
 def save_history(gauge: PressureGauge, path: str | Path) -> None:
     """Save a PressureGauge history to JSON."""
-    def _ndarray_to_list(obj: Any) -> Any:
-        """Recursively convert numpy arrays and types to JSON-serializable."""
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, (np.floating, np.integer)):
-            return obj.item()
-        elif isinstance(obj, dict):
-            return {str(k): _ndarray_to_list(v) for k, v in obj.items()}
-        elif isinstance(obj, (list, tuple)):
-            return [_ndarray_to_list(v) for v in obj]
-        elif isinstance(obj, set):
-            return sorted(_ndarray_to_list(v) for v in obj)
-        return obj
-
     data = {
         "version": "0.1.0",
         "step_count": gauge._step,
         "measurements": [
             {
-                "step": _ndarray_to_list(m.step),
-                "pressure": _ndarray_to_list(m.pressure),
-                "pressure_by_constraint": _ndarray_to_list(m.pressure_by_constraint),
-                "desired_step": _ndarray_to_list(m.desired_step),
-                "actual_step": _ndarray_to_list(m.actual_step),
-                "violation": _ndarray_to_list(m.violation),
+                "step": m.step,
+                "pressure": m.pressure,
+                "pressure_by_constraint": m.pressure_by_constraint,
+                "desired_step": m.desired_step,
+                "actual_step": m.actual_step,
+                "violation": m.violation,
             }
             for m in gauge.history
         ],
     }
-    Path(path).write_text(json.dumps(data, indent=2))
+    Path(path).write_text(json.dumps(data, indent=2, cls=NumpyEncoder))
 
 
 def load_history(path: str | Path) -> PressureGauge:
@@ -100,7 +98,7 @@ def save_diagnostic(result: DiagnosticResult, path: str | Path) -> None:
         "recommendation": result.recommendation,
         "signals": result.signals,
     }
-    Path(path).write_text(json.dumps(data, indent=2))
+    Path(path).write_text(json.dumps(data, indent=2, cls=NumpyEncoder))
 
 
 def export_metrics_csv(gauge: PressureGauge, path: str | Path) -> None:
@@ -132,15 +130,15 @@ def pressure_summary(gauge: PressureGauge) -> dict[str, Any]:
     return {
         "status": "active",
         "step_count": len(history),
-        "current_pressure": gauge.current_pressure,
-        "mean_pressure": gauge.mean_pressure,
-        "max_pressure": max(pressures),
-        "min_pressure": min(pressures),
-        "pressure_trend": gauge.pressure_trend,
+        "current_pressure": _ndarray_to_list(gauge.current_pressure),
+        "mean_pressure": _ndarray_to_list(gauge.mean_pressure),
+        "max_pressure": _ndarray_to_list(max(pressures)) if pressures else 0.0,
+        "min_pressure": _ndarray_to_list(min(pressures)) if pressures else 0.0,
+        "pressure_trend": _ndarray_to_list(gauge.pressure_trend),
         "goldilocks_zone": {
-            "lower": zone.lower_bound,
-            "upper": zone.upper_bound,
-            "width": zone.width,
+            "lower": _ndarray_to_list(zone.lower_bound),
+            "upper": _ndarray_to_list(zone.upper_bound),
+            "width": _ndarray_to_list(zone.width),
         },
-        "constraint_profile": gauge.pressure_profile(),
+        "constraint_profile": {k: _ndarray_to_list(v) for k, v in gauge.pressure_profile().items()},
     }
