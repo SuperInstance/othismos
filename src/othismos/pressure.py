@@ -292,11 +292,16 @@ class PressureGauge:
         self._pressure_sum += m.pressure
         self._pressure_sq_sum += m.pressure ** 2
         self._pressure_count += 1
+        if not self._history:
+            return
         if len(self._history) > self._window:
-            old = self._history.pop(0)
-            self._pressure_sum -= old.pressure
-            self._pressure_sq_sum -= old.pressure ** 2
-            self._pressure_count -= 1
+            # Should never happen if measure() is the only append path,
+            # but guard against external manipulation
+            while len(self._history) > self._window:
+                old = self._history.pop(0)
+                self._pressure_sum -= old.pressure
+                self._pressure_sq_sum -= old.pressure ** 2
+                self._pressure_count = max(0, self._pressure_count - 1)
         return m
 
     @property

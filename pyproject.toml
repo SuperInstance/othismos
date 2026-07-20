@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "othismos"
-version = "0.4.0"
+version = "0.4.1"
 description = "The force a bounded system exerts against its bounds. The push IS the knowing."
 readme = "README.md"
 requires-python = ">=3.10"

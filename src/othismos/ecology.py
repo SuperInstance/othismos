@@ -276,8 +276,9 @@ class Reef:
             memo[deposit_id] = 1.0
             return 1.0
 
-        # Prevent infinite recursion on cycles
-        memo[deposit_id] = 1.0  # placeholder
+        # Prevent infinite recursion on cycles — placeholder already set above.
+        # For circular references (A→B→A), memo returns 1.0 for the back-edge,
+        # which correctly breaks the cycle without infinite recursion.
         child_depths = sum(self._compute_depth(child, memo) for child in deposit.referenced_by)
         depth = 1.0 + child_depths / max(len(deposit.referenced_by), 1)
         memo[deposit_id] = depth
