@@ -5,6 +5,17 @@ All notable changes to othismos will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-07-20
+
+### Documented
+- **Gradient clipping integration.** Added comprehensive documentation for combining othismos pressure constraints with gradient clipping in training workflows. Includes guidance for `max_grad_norm` interaction with `l2_constraint`, recommended order of operations, and examples for PyTorch and HuggingFace trainers.
+
+## [0.4.1] - 2026-07-20
+
+### Fixed
+- **PressureGauge window enforcement now correctly bounds historical data.** The rolling window in `PressureGauge` previously could grow beyond the configured `window_size` under certain accumulation patterns, leading to unbounded memory growth over long training runs. Window enforcement now strictly truncates to the configured size.
+- **Circular depth safety in reef deposition.** `Reef.add_deposit()` now prevents pathological circular references when depositing layers that reference their parent reef, preventing infinite recursion during serialization.
+
 ## [0.4.0] - 2026-07-16
 
 ### Fixed
